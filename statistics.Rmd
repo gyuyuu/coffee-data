@@ -1,0 +1,18 @@
+---
+title: "statistics"
+output: html_document
+---
+
+```{r, echo=FALSE}
+coffee_ratings <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-07-07/coffee_ratings.csv')
+View(coffee_ratings)
+library(tidyverse)
+library(ggplot2)
+```
+
+
+```{r, echo=FALSE}
+# Our target is "altitude_mean_meters"
+coffee_ratings %>% 
+  select(altitude_mean_meters, total_cup_points, aroma:moisture)
+```
