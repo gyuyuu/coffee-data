@@ -1,0 +1,47 @@
+---
+title: "data sampling"
+output: html_document
+---
+
+```{r, echo=FALSE}
+coffee_ratings <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-07-07/coffee_ratings.csv')
+View(coffee_ratings)
+library(tidyverse)
+library(ggplot2)
+```
+
+
+```{r, echo=FALSE}
+# Our target is "altitude_mean_meters"
+coffee_ratings %>% 
+  select(altitude_mean_meters, total_cup_points, aroma:moisture)
+
+# Distribution Visualization
+hist(coffee_ratings$altitude_mean_meters, breaks=1000)
+# By observation, we found data over 100km are probably outliers
+
+# Remove outliers from "altitude_mean_meters"
+coffee_ratings$altitude_mean_meters <- ifelse(coffee_ratings$altitude_mean_meters>10000, NA, coffee_ratings$altitude_mean_meters)
+
+# Distribution Visualization
+hist(coffee_ratings$altitude_mean_meters, breaks=1000)
+```
+
+```{r, echo=FALSE}
+# IQR Rule for outliers
+
+target <- coffee_ratings$altitude_mean_meters
+
+upperQ <- fivenum(target)[4]
+lowerQ <- fivenum(target)[2]
+IQR <- upperQ - lowerQ
+
+# remove outliers
+target <- ifelse(target < lowerQ+IQR*1.5 | target > upperQ+IQR*1.5, NA, target)
+target <- target[!is.na(target)]
+target
+
+# Distribution Visualization
+hist(target, breaks=1000)
+```
+
