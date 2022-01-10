@@ -1,0 +1,295 @@
+---
+title: "Cleaner Code Term Project"
+author: "Chris Karvelas"
+date: "09/01/2022"
+output: html_document
+---
+
+
+```{r}
+coffee_ratings_raw <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-07-07/coffee_ratings.csv')
+#View(coffee_ratings)
+library(tidyverse)
+library(ggplot2)
+library(corrplot)
+library(dplyr)
+```
+
+```{r}
+coffee_ratings<- coffee_ratings_raw %>% 
+  select(altitude_mean_meters, total_cup_points, aroma:moisture) %>% 
+  filter(altitude_mean_meters<5000, total_cup_points>50, !is.na(altitude_mean_meters)) %>% 
+  mutate(altitude_range = cut(altitude_mean_meters, breaks =c(0,1000,2000,3000,4000,5000),right=TRUE, labels =  c("Group 1 (<1000m)", "Group 2 (1000m-2000m)","Group 3 (2000m-3000m)","Group 4 (3000m-4000m)", "Group 5 (>4000m)")))
+
+coffee_ratings %>% 
+  ggplot(aes(total_cup_points,fill = altitude_range)) +
+  geom_histogram(bins=10) +
+  facet_wrap(~ altitude_range)+
+  theme(legend.position = "none")
+```
+
+
+
+```{r}
+
+summary_stats<-coffee_ratings %>% 
+  group_by(altitude_range) %>% 
+  mutate(mean_points=mean(total_cup_points)) %>% 
+  mutate(count=n()) %>% 
+  mutate(sd=sd(total_cup_points)) %>% 
+  mutate(median=median(total_cup_points)) %>%
+  mutate(lb_95=(mean_points-1.96*sd/sqrt(count))) %>% 
+  mutate(ub_95=(mean_points+1.96*sd/sqrt(count))) %>% 
+  select(mean_points,sd,count,median,lb_95,ub_95) %>%
+  arrange(-desc(altitude_range)) %>% 
+  unique()
+
+summary_stats
+```
+
+```{r}
+metric_summary_stats<-coffee_ratings %>% 
+  group_by(altitude_range) %>% 
+  select(aroma:cupper_points, total_cup_points) %>%
+  summarise_all(funs(mean,median,sd)) %>% 
+  unique() %>% 
+  select(sort(colnames(.)))
+View(metric_summary_stats)
+
+```
+
+```{r}
+coffee_ratings %>% 
+  ggplot(aes(altitude_mean_meters,total_cup_points))+
+  geom_point(aes(,colour=altitude_range)) + 
+  ggtitle("      Total Cup Points vs Altitude")
+
+```
+
+#NEW STUFF!!!!! LINEAR REGRESSION
+
+```{r}
+p_val<-vector("double",8)
+
+# total_cup_points
+lin_reg<-lm(total_cup_points~altitude_mean_meters,data=coffee_ratings)
+summary(lin_reg)
+
+
+ggplot(coffee_ratings, aes(altitude_mean_meters,total_cup_points))+
+  geom_point(aes(,colour=altitude_range))+
+  stat_smooth(method=lm)#check if this line is okay
+
+p_val[1]<-summary(lin_reg)$coefficients[2,4]
+
+
+
+```
+
+
+```{r}
+#aroma
+lin_reg_ar<-lm(aroma~altitude_mean_meters,data=coffee_ratings)
+summary(lin_reg_ar)
+
+ggplot(coffee_ratings, aes(altitude_mean_meters,aroma))+
+  geom_point(aes(,colour=altitude_range))+
+  stat_smooth(method=lm)
+
+p_val[2]<-summary(lin_reg_ar)$coefficients[2,4]
+
+```
+
+```{r}
+
+#flavor
+lin_reg_fl<-lm(flavor~altitude_mean_meters,data=coffee_ratings)
+summary(lin_reg_fl)
+
+ggplot(coffee_ratings, aes(altitude_mean_meters,flavor))+
+  geom_point(aes(,colour=altitude_range))+
+  stat_smooth(method=lm)
+
+p_val[3]<-summary(lin_reg_fl)$coefficients[2,4]
+
+```
+
+```{r}
+
+#aftertaste
+
+lin_reg_at<-lm(aftertaste~altitude_mean_meters,data=coffee_ratings)
+summary(lin_reg_at)
+
+ggplot(coffee_ratings, aes(altitude_mean_meters,aftertaste))+
+  geom_point(aes(,colour=altitude_range))+
+  stat_smooth(method=lm)
+p_val[4]<-summary(lin_reg_at)$coefficients[2,4]
+```
+
+```{r}
+#acidity
+lin_reg_ac<-lm(acidity~altitude_mean_meters,data=coffee_ratings)
+summary(lin_reg_ac)
+
+ggplot(coffee_ratings, aes(altitude_mean_meters,acidity))+
+  geom_point(aes(,colour=altitude_range))+
+  stat_smooth(method=lm)
+
+
+p_val[5]<-summary(lin_reg_ac)$coefficients[2,4]
+```
+
+```{r}
+#body
+lin_reg_bo<-lm(body~altitude_mean_meters,data=coffee_ratings)
+summary(lin_reg_bo)
+
+ggplot(coffee_ratings, aes(altitude_mean_meters,body))+
+  geom_point(aes(,colour=altitude_range))+
+  stat_smooth(method=lm)
+
+p_val[6]<-summary(lin_reg_bo)$coefficients[2,4]
+
+```
+
+```{r}
+#balance
+lin_reg_bl<-lm(balance~altitude_mean_meters,data=coffee_ratings)
+summary(lin_reg_bl)
+
+ggplot(coffee_ratings, aes(altitude_mean_meters,balance))+
+  geom_point(aes(,colour=altitude_range))+
+  stat_smooth(method=lm)
+
+p_val[7]<-summary(lin_reg_bl)$coefficients[2,4]
+```
+
+```{r}
+#cupper_points
+lin_reg_cp<-lm(cupper_points~altitude_mean_meters,data=coffee_ratings)
+summary(lin_reg_cp)
+
+ggplot(coffee_ratings, aes(altitude_mean_meters,cupper_points))+
+  geom_point(aes(,colour=altitude_range))+
+  stat_smooth(method=lm)
+
+
+p_val[8]<-summary(lin_reg_cp)$coefficients[2,4]
+```
+
+```{r}
+#Grid
+
+par(mfrow=c(2,4))
+
+  plot(coffee_ratings$altitude_mean_meters, coffee_ratings$total_cup_points,
+       xlab="altitude", ylab="total_cup_points")
+  lin_reg_all <- lm(coffee_ratings$total_cup_points ~ coffee_ratings$altitude_mean_meters)
+  abline(lin_reg_all, col="red")
+  
+  plot(coffee_ratings$altitude_mean_meters, coffee_ratings$aroma,
+       xlab="altitude", ylab="aroma")
+  lin_reg_all <- lm(coffee_ratings$aroma ~ coffee_ratings$altitude_mean_meters)
+  abline(lin_reg_all, col="red")
+  
+  plot(coffee_ratings$altitude_mean_meters, coffee_ratings$flavor,
+       xlab="altitude", ylab="flavor")
+  lin_reg_all <- lm(coffee_ratings$flavor ~ coffee_ratings$altitude_mean_meters)
+  abline(lin_reg_all, col="red")
+  
+  plot(coffee_ratings$altitude_mean_meters, coffee_ratings$aftertaste,
+       xlab="altitude", ylab="aftertaste")
+  lin_reg_all <- lm(coffee_ratings$aftertaste ~ coffee_ratings$altitude_mean_meters)
+  abline(lin_reg_all, col="red")
+  
+  plot(coffee_ratings$altitude_mean_meters, coffee_ratings$acidity,
+       xlab="altitude", ylab="acidity")
+  lin_reg_all <- lm(coffee_ratings$acidity ~ coffee_ratings$altitude_mean_meters)
+  abline(lin_reg_all, col="red")
+  
+  plot(coffee_ratings$altitude_mean_meters, coffee_ratings$body,
+       xlab="altitude", ylab="body")
+  lin_reg_all <- lm(coffee_ratings$body ~ coffee_ratings$altitude_mean_meters)
+  abline(lin_reg_all, col="red")
+  
+  plot(coffee_ratings$altitude_mean_meters, coffee_ratings$balance,
+       xlab="altitude", ylab="balance")
+  lin_reg_all <- lm(coffee_ratings$balance ~ coffee_ratings$altitude_mean_meters)
+  abline(lin_reg_all, col="red")
+  
+  plot(coffee_ratings$altitude_mean_meters, coffee_ratings$cupper_points,
+       xlab="altitude", ylab="cupper_points")
+  lin_reg_all <- lm(coffee_ratings$cupper_points ~ coffee_ratings$altitude_mean_meters)
+  abline(lin_reg_all, col="red")
+```
+
+```{r}
+#Table of P-values
+
+
+regression_test<-data.frame(Metric=c("total_cup_points","aroma","flavor", "aftertaste", "acidity", "body", "balance", "cupper_points"), p_value=p_val)
+
+regression_test
+
+```
+
+
+#   CORRELATION TESTS
+
+```{r}
+
+just_metrics<-coffee_ratings %>% 
+  select(total_cup_points:balance,cupper_points, altitude_mean_meters)
+
+cor_with_alt<-vector(mode="double",length=8)
+
+for(i in 1:8){
+  cor_with_alt[i]=cor(just_metrics[i],just_metrics$altitude_mean_meters)
+}
+
+cor_with_alt_table<-data.frame(row.names=c("total_cup_points","aroma","flavor","aftertaste", "acidity", "body","balance","cupper_points"), Correlation_with_Altitude=cor_with_alt)
+
+cor_with_alt_table
+
+corrplot(cor(just_metrics), method='number') # I just tried this out of curiosity but it shows an interesting result. altitude~metrics has the lowest correlation, metric~metric has stronger correlation.
+```
+
+```{r}
+cor_test_vector<-vector(mode="double",length=24)
+
+
+cor_test_vector[1]<-cor.test(just_metrics$total_cup_points,just_metrics$altitude_mean_meters)$p.value
+cor_test_vector[2:3]<-cor.test(just_metrics$total_cup_points,just_metrics$altitude_mean_meters)$conf.int
+
+cor_test_vector[4]<-cor.test(just_metrics$aroma,just_metrics$altitude_mean_meters)$p.value
+cor_test_vector[5:6]<-cor.test(just_metrics$aroma,just_metrics$altitude_mean_meters)$conf.int
+
+cor_test_vector[7]<-cor.test(just_metrics$flavor,just_metrics$altitude_mean_meters)$p.value
+cor_test_vector[8:9]<-cor.test(just_metrics$flavor,just_metrics$altitude_mean_meters)$conf.int
+
+cor_test_vector[10]<-cor.test(just_metrics$aftertaste,just_metrics$altitude_mean_meters)$p.value
+cor_test_vector[11:12]<-cor.test(just_metrics$aftertaste,just_metrics$altitude_mean_meters)$conf.int
+
+cor_test_vector[13]<-cor.test(just_metrics$acidity,just_metrics$altitude_mean_meters)$p.value
+cor_test_vector[14:15]<-cor.test(just_metrics$acidity,just_metrics$altitude_mean_meters)$conf.int
+
+cor_test_vector[16]<-cor.test(just_metrics$body,just_metrics$altitude_mean_meters)$p.value
+cor_test_vector[17:18]<-cor.test(just_metrics$body,just_metrics$altitude_mean_meters)$conf.int
+
+cor_test_vector[19]<-cor.test(just_metrics$balance,just_metrics$altitude_mean_meters)$p.value
+cor_test_vector[20:21]<-cor.test(just_metrics$balance,just_metrics$altitude_mean_meters)$conf.int
+
+cor_test_vector[22]<-cor.test(just_metrics$cupper_points,just_metrics$altitude_mean_meters)$p.value
+cor_test_vector[23:24]<-cor.test(just_metrics$cupper_points,just_metrics$altitude_mean_meters)$conf.int
+
+cor_test<-data.frame(metric=c("total_cup_points","aroma", "flavor","aftertaste","acidity","body","balance","cupper_points"), p_value=cor_test_vector[seq(1,22,3)],lower_bound_95=cor_test_vector[seq(2,23,3)], upper_bound_95=cor_test_vector[seq(3,24,3)] )
+
+cor_test
+
+#all correlated, pass the test (but not strong)
+#but all weekly correlated
+
+
+```
+
