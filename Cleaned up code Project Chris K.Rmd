@@ -16,7 +16,7 @@ library(corrplot)
 
 ```{r}
 coffee_ratings<- coffee_ratings_raw %>% 
-  select(altitude_mean_meters, total_cup_points, aroma:moisture) %>% 
+  select(altitude_mean_meters, total_cup_points, aroma:moisture, species) %>% 
   filter(altitude_mean_meters<5000, total_cup_points>50, !is.na(altitude_mean_meters)) %>% 
   mutate(altitude_range = cut(altitude_mean_meters, breaks =c(0,1000,2000,3000,4000,5000),right=TRUE, labels =  c("Group 1 (<1000m)", "Group 2 (1000m-2000m)","Group 3 (2000m-3000m)","Group 4 (3000m-4000m)", "Group 5 (>4000m)")))
 coffee_ratings %>% 
@@ -233,3 +233,70 @@ cor_test
 #but all weekly correlated
 ```
 
+```{r}
+# compare species
+
+# data sampling
+arabica <- filter(coffee_ratings, species == "Arabica")
+robusta <- filter(coffee_ratings, species == "Robusta")
+species_count <- c(nrow(arabica), nrow(robusta))
+
+# visualization
+par(mfrow=c(1,3))
+pie(species_count, label=c("Arabica", "Robusta"))
+hist(arabica$altitude_mean_meters)
+hist(robusta$altitude_mean_meters)
+
+# regression on total_cup_points
+
+p_val_species<-vector("double",2)
+
+# arabica
+lin_reg_arabica<-lm(total_cup_points~altitude_mean_meters,data=arabica)
+summary(lin_reg_arabica)
+ggplot(arabica, aes(altitude_mean_meters,total_cup_points))+
+  geom_point(aes(,colour=altitude_range))+
+  stat_smooth(method=lm)
+p_val_species[1]<-summary(lin_reg_arabica)$coefficients[2,4]
+
+# robusta
+lin_reg_robusta<-lm(total_cup_points~altitude_mean_meters,data=robusta)
+summary(lin_reg_arabica)
+ggplot(robusta, aes(altitude_mean_meters,total_cup_points))+
+  geom_point(aes(,colour=altitude_range))+
+  stat_smooth(method=lm)
+p_val_species[2]<-summary(lin_reg_robusta)$coefficients[2,4]
+
+# grid
+par(mfrow=c(1,2))
+  plot(arabica$altitude_mean_meters, arabica$total_cup_points,
+       xlab="altitude", ylab="total_cup_points")
+  lin_reg_all <- lm(arabica$total_cup_points ~ arabica$altitude_mean_meters)
+  abline(lin_reg_all, col="red")
+  
+  plot(robusta$altitude_mean_meters, robusta$total_cup_points,
+       xlab="altitude", ylab="total_cup_points")
+  lin_reg_all <- lm(robusta$total_cup_points ~ robusta$altitude_mean_meters)
+  abline(lin_reg_all, col="red")
+  
+#Table of P-values
+regression_test_species<-data.frame(Species=c("Arabica","Robusta"), p_value=p_val_species)
+regression_test_species
+
+# correlation test
+cor_with_alt_species <- vector(mode="double",length=2)
+cor_with_alt_species[1] <- cor(arabica$total_cup_points,arabica$altitude_mean_meters)
+cor_with_alt_species[2] <- cor(robusta$total_cup_points,robusta$altitude_mean_meters)
+
+cor_with_alt_table_species<-data.frame(row.names=c("Arabica","Robusta"), Correlation_with_Altitude=cor_with_alt_species)
+cor_with_alt_table_species
+
+cor_test_vector<-vector(mode="double",length=6)
+cor_test_vector[1]<-cor.test(arabica$total_cup_points,arabica$altitude_mean_meters)$p.value
+cor_test_vector[2:3]<-cor.test(arabica$total_cup_points,arabica$altitude_mean_meters)$conf.int
+cor_test_vector[4]<-cor.test(robusta$total_cup_points,robusta$altitude_mean_meters)$p.value
+cor_test_vector[5:6]<-cor.test(robusta$total_cup_points,robusta$altitude_mean_meters)$conf.int
+
+cor_test<-data.frame(species=c("Arabica","Robusta"), p_value=cor_test_vector[seq(1,4,3)],lower_bound_95=cor_test_vector[seq(2,5,3)], upper_bound_95=cor_test_vector[seq(3,6,3)] )
+cor_test
+```
